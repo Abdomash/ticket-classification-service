@@ -3,7 +3,8 @@
 One process runs WORKER_CONCURRENCY workers. Each worker claims a ticket, classifies it, and
 stores the result, a retry, or a failure. On SIGTERM or SIGINT, each worker finishes its current
 ticket and exits. If the process is killed instead, the ticket's lease expires and another worker
-claims it again.
+claims it again. An unexpected error while processing a ticket is logged and does not stop the
+process. An error while claiming, such as the database being down, does: Compose restarts it.
 """
 
 import asyncio
@@ -66,6 +67,16 @@ async def worker(
                 ticket_id=ticket.id,
                 attempt=ticket.attempts,
                 worker=n,
+            )
+        except Exception as error:  # noqa: BLE001
+            # Stops one ticket's error from crashing the other workers in this process.
+            log(
+                "ticket.error",
+                logging.ERROR,
+                ticket_id=ticket.id,
+                attempt=ticket.attempts,
+                worker=n,
+                error=type(error).__name__,
             )
 
     log("worker.stopped", worker=n)
