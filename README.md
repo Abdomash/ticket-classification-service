@@ -36,35 +36,37 @@ You need Docker and `uv`.
    docker compose exec api python scripts/load_samples.py
    ```
 
-2. Browse the API docs at http://localhost:8000/docs. The OpenAPI schema is at http://localhost:8000/openapi.json.
+2. Open the web client at http://localhost:8000.
 
-3. Submit a new ticket.
+3. Browse the API docs at http://localhost:8000/docs.
+
+4. Submit a new ticket.
    ```sh
    curl -X POST localhost:8000/tickets -H 'Content-Type: application/json' \
      -d '{"id": "t-2001", "subject": "Refund", "body": "I was charged twice for May."}'
    ```
 
-4. Get a ticket.
+5. Get a ticket.
    ```sh
    curl localhost:8000/tickets/t-2001
    ```
 
-5. List and filter tickets.
+6. List and filter tickets.
    ```sh
    curl 'localhost:8000/tickets?category=billing&limit=5'
    ```
 
-6. Review logs.
+7. Review logs.
    ```sh
    docker compose logs -f api worker
    ```
 
-7. Add more workers. Each worker processes `WORKER_CONCURRENCY` tickets at a time.
+8. Add more workers. Each worker processes `WORKER_CONCURRENCY` tickets at a time.
    ```sh
    docker compose up -d --scale worker=3
    ```
 
-8. Stop the services.
+9. Stop the services.
    ```sh
    docker compose down
    ```
@@ -106,6 +108,7 @@ sequenceDiagram
 ```
 
 - `app/api.py` is the API service.
+- `app/static/index.html` is the web client served at `/`. It only calls the JSON API.
 - `app/worker.py` is the worker that classifies tickets.
 - `app/data/` has the schema and all SQL.
 - `app/llm/` has the model clients, the prompt, and the prompt-injection guard.
