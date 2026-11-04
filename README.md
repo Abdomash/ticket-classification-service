@@ -108,6 +108,7 @@ uv run pytest
 ```sh
 uv run python -m scripts.evaluate
 ```
+Each run also saves one JSON line per ticket to `logs/evaluations/`, which git ignores.
 
 ## How it works
 
