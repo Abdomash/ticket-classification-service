@@ -1,5 +1,6 @@
 """Classifier for any OpenAI-compatible chat completions API. The default is OpenRouter."""
 
+import asyncio
 from typing import Self
 
 import openai
@@ -82,6 +83,7 @@ class OpenAIClassifier:
             http_client=http_client,
         )
         self._model = model
+        self._timeout = timeout
 
     async def __aenter__(self) -> Self:
         return self
@@ -90,16 +92,20 @@ class OpenAIClassifier:
         await self._client.close()
 
     async def classify(self, subject: str, body: str) -> ClassifyResult:
+        # The SDK's timeout applies to each network step, so a slow reply can take longer in total.
         try:
-            response = await self._client.chat.completions.create(
-                model=self._model,
-                messages=build_messages(subject, body),
-                temperature=0,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {"name": "ticket_classification", "strict": True, "schema": SCHEMA},
-                },
-            )
+            async with asyncio.timeout(self._timeout):
+                response = await self._client.chat.completions.create(
+                    model=self._model,
+                    messages=build_messages(subject, body),
+                    temperature=0,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {"name": "ticket_classification", "strict": True, "schema": SCHEMA},
+                    },
+                )
+        except TimeoutError:
+            raise LLMError("timeout") from None
         except openai.APIError as e:
             raise LLMError(type(e).__name__, retry_after=_retry_after(e)) from e
 

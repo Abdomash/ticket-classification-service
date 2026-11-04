@@ -1,5 +1,6 @@
 """The OpenAI classifier against a mocked HTTP transport. No network calls."""
 
+import asyncio
 import json
 
 import httpx2
@@ -19,9 +20,9 @@ def completion(content: str | None, finish_reason: str = "stop") -> dict:
     }
 
 
-def classifier(handler) -> OpenAIClassifier:
+def classifier(handler, timeout: float = 5) -> OpenAIClassifier:
     http_client = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
-    return OpenAIClassifier("http://llm.test/v1", "key", "test-model", timeout=5, http_client=http_client)
+    return OpenAIClassifier("http://llm.test/v1", "key", "test-model", timeout=timeout, http_client=http_client)
 
 
 async def test_request_is_strict_ticket_is_delimited_and_labels_are_normalised():
@@ -94,3 +95,12 @@ async def test_errors_and_bad_answers_become_llm_errors(handler, retry_after):
     with pytest.raises(LLMError) as caught:
         await classifier(handler).classify("subject", "body")
     assert caught.value.retry_after == retry_after
+
+
+async def test_a_slow_reply_is_cut_off_at_the_timeout():
+    async def handler(request):
+        await asyncio.sleep(5)
+        return httpx2.Response(200, json=completion(json.dumps(GOOD)))
+
+    with pytest.raises(LLMError, match="timeout"):
+        await asyncio.wait_for(classifier(handler, timeout=0.1).classify("subject", "body"), timeout=2)
