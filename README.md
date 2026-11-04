@@ -196,6 +196,14 @@ This is a prototype and is not ready for production. This is how we expect it to
 - **Model provider:** its rate limit is likely the real ceiling. We might spread calls over several providers or API keys, behind the same `Classifier` interface.
 - **Postgres:** at high volume, the frequent queue updates would compete with reads of the same rows. We might move the job state (lease, attempts, `run_after`) into its own table, and wake workers with `LISTEN/NOTIFY` instead of polling.
 
+## Weaknesses
+
+Scalability above is about handling the increasing load, but here are some of the trade-offs and weaknesses of our design choices:
+
+- **Processing is at-least-once:** The queue lease mechanism is at-least-once, meaning that tickets may get processed more than once. This could happen when a worker is slow or temporarily partitioned from the database. With no way to know about this out-of-reach worker, the database will allow another worker to process this ticket, potentially paying for the model call twice, although we only store the latest worker's result.
+- **Coupling ticket storage and queuing logic:** Tickets are stored and scheduled from a single PostgreSQL. This keeps submitting and queueing tickets consistent, but creates a single point of pressure and failure: a slow or unavailable database stops both ticket ingestion and classification. If we want to expand the database horizontally, we would first need to split the queue state from the ticket data, starting with moving the job state into its own table as described in Scalability.
+- **Model failures limit this system's reliability:** LLMs inherently are not reliable, and LLM inference has lots of variability, due to network issues and provider outages. OpenRouter already routes between several providers, but it itself is still a single dependency. We can mitigate lots of these issues by balancing between several LLM providers, including potentially failing over to on-prem or non-LLM solutions.
+
 ## Future features
 
 These are some of the features we could add next.
