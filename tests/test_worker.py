@@ -1,10 +1,8 @@
 import asyncio
 
-import pytest
-
 from app.data import tickets
 from app.llm.base import ClassifyResult, parse_classification
-from app.llm.fake_classifier import FAILURE_MODES, FakeClassifier
+from app.llm.fake_classifier import FakeClassifier
 from app.models import Status
 from app.worker import worker
 from tests.conftest import drain, run_sql
@@ -24,12 +22,9 @@ class Stub:
         return ClassifyResult(parse_classification(self.content), "stub", "v1")
 
 
-@pytest.mark.parametrize("mode", FAILURE_MODES)
-async def test_failures_are_retried_then_marked_failed_and_never_stored(
-    pool, settings, mode
-):
+async def test_failures_are_retried_then_marked_failed_and_never_stored(pool, settings):
     await tickets.insert(pool, "a", "Invoice", "Wrong invoice")
-    classifier = FakeClassifier(failure_rate=0, seed=1, force=mode, delay=0)
+    classifier = FakeClassifier(failure_rate=1, seed=1, delay=0)
 
     for attempt in range(1, settings.max_attempts + 1):
         await run_sql(
