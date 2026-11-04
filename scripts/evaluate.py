@@ -7,6 +7,7 @@ Usage: python -m scripts.evaluate
 
 import asyncio
 import json
+import os
 from pathlib import Path
 
 from app.config import load_settings
@@ -17,6 +18,8 @@ EVALUATION_SET = Path(__file__).parent.parent / "samples" / "evaluation_set.json
 
 
 async def main() -> None:
+    # The settings require a database URL, but this script never connects to the database.
+    os.environ.setdefault("DATABASE_URL", "unused")
     settings = load_settings()
     tickets = json.loads(EVALUATION_SET.read_text())
 

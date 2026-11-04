@@ -106,7 +106,7 @@ uv run pytest
 
 `samples/evaluation_set.json` holds labelled tickets, including prompt-injection attempts. This script classifies them with the model configured in `.env` and reports how many labels it got right.
 ```sh
-docker compose exec worker python -m scripts.evaluate
+uv run python -m scripts.evaluate
 ```
 
 ## How it works
