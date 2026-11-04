@@ -11,13 +11,9 @@ from app.models import Classification
 class LLMError(Exception):
     """A model call that did not produce a valid classification.
 
-    The worker retries every LLMError until MAX_ATTEMPTS. `retry_after` is the provider's
-    Retry-After in seconds, if it sent one. The message is short and never contains model output.
+    The worker retries every LLMError until MAX_ATTEMPTS. The message is short and never
+    contains model output.
     """
-
-    def __init__(self, message: str, retry_after: float | None = None):
-        super().__init__(message)
-        self.retry_after = retry_after
 
 
 @dataclass(frozen=True)

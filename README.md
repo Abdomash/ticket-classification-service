@@ -180,7 +180,7 @@ When an attempt fails, the worker sets the ticket back to `pending` with a later
 
 **Retries:** the queue gives each ticket `MAX_ATTEMPTS` (3) attempts. Once a worker claims a ticket, it can retry its model call up to 3 times (the OpenAI SDK's `max_retries`), all within the `LLM_TIMEOUT_SECONDS` duration. If the worker still fails to process the ticket, because it crashed or its model calls kept failing, the ticket goes back to the queue with one attempt used, ready for another worker to claim. Once all 3 attempts are used, the ticket is `failed` and is no longer processed.
 
-Before the next attempt, a ticket waits 30 seconds, or longer if the provider's `Retry-After` asks for it.
+Before the next attempt, a ticket waits 30 seconds. Within one attempt, the OpenAI SDK waits for the provider's `Retry-After`, as long as it fits within `LLM_TIMEOUT_SECONDS`.
 
 ### Prompt injection
 

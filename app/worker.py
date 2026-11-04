@@ -22,7 +22,7 @@ from app.llm.base import Classifier, LLMError
 from app.logging import log, setup_logging
 from app.models import Ticket
 
-# How long a failed ticket waits before its next attempt, unless the provider's Retry-After is longer.
+# How long a failed ticket waits before its next attempt.
 RETRY_DELAY_SECONDS = 30
 
 
@@ -128,12 +128,13 @@ async def process(
     except LLMError as error:
         reason = str(error)
         if ticket.attempts < settings.max_attempts:
-            delay = max(RETRY_DELAY_SECONDS, error.retry_after or 0)
             await tickets.schedule_retry(
-                pool, ticket.id, ticket.attempts, reason, delay
+                pool, ticket.id, ticket.attempts, reason, RETRY_DELAY_SECONDS
             )
             ticket_log(
-                "ticket.retry_scheduled", error=reason, delay_seconds=round(delay)
+                "ticket.retry_scheduled",
+                error=reason,
+                delay_seconds=RETRY_DELAY_SECONDS,
             )
         else:
             await tickets.fail(pool, ticket.id, ticket.attempts, reason)

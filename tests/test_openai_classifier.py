@@ -68,13 +68,8 @@ async def test_rate_limit_is_retried_request_is_strict_and_labels_are_normalised
     assert user_message.count("</ticket>") == 1
 
 
-def status(code: int, retry_after: str | None = None):
-    headers = {}
-    if retry_after is not None:
-        headers["retry-after"] = retry_after
-    return lambda request: httpx2.Response(
-        code, json={"error": {"message": "x"}}, headers=headers
-    )
+def status(code: int):
+    return lambda request: httpx2.Response(code, json={"error": {"message": "x"}})
 
 
 def reply(content: str | None, finish_reason: str = "stop"):
@@ -92,39 +87,33 @@ GOOD = {"category": "billing", "priority": "low", "summary": "x"}
 
 
 @pytest.mark.parametrize(
-    ("handler", "retry_after"),
+    "handler",
     [
         # API errors
-        (status(429, retry_after="7"), 7),
-        (status(500), None),
-        (status(422), None),
-        (raise_error(httpx2.ReadTimeout("slow")), None),
-        (raise_error(httpx2.ConnectError("refused")), None),
-        (status(400), None),
-        (status(401), None),
-        (status(404), None),
+        status(429),
+        status(500),
+        status(422),
+        raise_error(httpx2.ReadTimeout("slow")),
+        raise_error(httpx2.ConnectError("refused")),
+        status(400),
+        status(401),
+        status(404),
         # Answers that are not a valid classification
-        (
-            lambda request: httpx2.Response(
-                200, json={**completion(""), "choices": []}
-            ),
-            None,
-        ),
-        (reply(None), None),
-        (reply(json.dumps(GOOD), finish_reason="length"), None),
-        (reply(json.dumps(GOOD), finish_reason="content_filter"), None),
-        (reply('{"category": "billing", "priority": '), None),
-        (reply("Sure! It is billing."), None),
-        (reply(json.dumps({**GOOD, "category": "sales"})), None),
-        (reply(json.dumps({"category": "billing", "priority": "low"})), None),
-        (reply(json.dumps({**GOOD, "refund_approved": True})), None),
-        (reply(json.dumps({**GOOD, "summary": "x" * 201})), None),
+        lambda request: httpx2.Response(200, json={**completion(""), "choices": []}),
+        reply(None),
+        reply(json.dumps(GOOD), finish_reason="length"),
+        reply(json.dumps(GOOD), finish_reason="content_filter"),
+        reply('{"category": "billing", "priority": '),
+        reply("Sure! It is billing."),
+        reply(json.dumps({**GOOD, "category": "sales"})),
+        reply(json.dumps({"category": "billing", "priority": "low"})),
+        reply(json.dumps({**GOOD, "refund_approved": True})),
+        reply(json.dumps({**GOOD, "summary": "x" * 201})),
     ],
 )
-async def test_errors_and_bad_answers_become_llm_errors(handler, retry_after):
-    with pytest.raises(LLMError) as caught:
+async def test_errors_and_bad_answers_become_llm_errors(handler):
+    with pytest.raises(LLMError):
         await classifier(handler).classify("subject", "body")
-    assert caught.value.retry_after == retry_after
 
 
 async def test_a_slow_reply_is_cut_off_at_the_timeout():

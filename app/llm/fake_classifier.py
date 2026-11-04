@@ -94,7 +94,7 @@ class FakeClassifier:
         if mode == "timeout":
             raise LLMError("APITimeoutError")
         if mode == "rate_limit":
-            raise LLMError("RateLimitError", retry_after=2)
+            raise LLMError("RateLimitError")
 
         text = f"{subject}\n{body}".lower()
         category = most_mentioned(text, CATEGORY_KEYWORDS, default="other")

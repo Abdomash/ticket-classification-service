@@ -65,17 +65,6 @@ def parse_response(response: ChatCompletion, requested_model: str) -> ClassifyRe
     return ClassifyResult(classification, model, PROMPT_VERSION)
 
 
-def _retry_after(error: openai.APIError) -> float | None:
-    """Return the Retry-After header in seconds, if the response had one."""
-    response = getattr(error, "response", None)
-    if response is None:
-        return None
-    try:
-        return float(response.headers["retry-after"])
-    except (KeyError, ValueError):
-        return None
-
-
 class OpenAIClassifier:
     def __init__(
         self,
@@ -125,6 +114,6 @@ class OpenAIClassifier:
         except TimeoutError:
             raise LLMError("timeout") from None
         except openai.APIError as e:
-            raise LLMError(type(e).__name__, retry_after=_retry_after(e)) from e
+            raise LLMError(type(e).__name__) from e
 
         return parse_response(response, self._model)
