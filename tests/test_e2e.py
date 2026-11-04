@@ -14,7 +14,7 @@ async def post_samples_and_classify(client, pool, settings):
     await drain(pool, FakeClassifier(failure_rate=0, seed=1, delay=0), settings)
 
 
-async def test_samples_are_classified_once_and_resubmissions_change_nothing(
+async def test_samples_are_classified_once_and_resubmissions_or_bad_input_change_nothing(
     client, pool, settings
 ):
     web_client = await client.get("/")
@@ -32,6 +32,8 @@ async def test_samples_are_classified_once_and_resubmissions_change_nothing(
     again = await client.post("/tickets", json=SAMPLES[0])
     assert again.status_code == 200
     assert again.json()["status"] == "classified"
+    padded = {**SAMPLES[0], "body": f" {SAMPLES[0]['body']}\n"}
+    assert (await client.post("/tickets", json=padded)).status_code == 200
     assert await tickets.claim_one(pool, settings.lease_seconds) is None
 
     # The same id with different content is rejected and the original is kept.
@@ -42,6 +44,12 @@ async def test_samples_are_classified_once_and_resubmissions_change_nothing(
     assert conflict.json()["error"]["code"] == "conflict"
     stored = (await client.get(f"/tickets/{SAMPLES[0]['id']}")).json()
     assert stored["body"] == SAMPLES[0]["body"]
+
+    # A blank body or a NUL character is rejected, and nothing is stored.
+    for body in ("   \n", "hi \x00 there"):
+        invalid = await client.post("/tickets", json={"id": "t-new", "body": body})
+        assert invalid.status_code == 422
+    assert (await client.get("/tickets/t-new")).status_code == 404
 
 
 async def test_pagination_returns_each_ticket_once_and_applies_filters(

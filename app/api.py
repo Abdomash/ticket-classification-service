@@ -11,7 +11,13 @@ from typing import Annotated
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import load_settings
@@ -31,7 +37,18 @@ class TicketIn(BaseModel):
 
     id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     subject: str = Field("", max_length=300)
-    body: str = Field(min_length=1, max_length=20_000)
+    body: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=20_000),
+    ]
+
+    @field_validator("subject", "body")
+    @classmethod
+    def _no_nul(cls, value: str) -> str:
+        """Postgres cannot store NUL characters in text."""
+        if "\x00" in value:
+            raise ValueError("must not contain NUL characters")
+        return value
 
 
 class TicketOut(BaseModel):
