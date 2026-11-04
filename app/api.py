@@ -2,7 +2,6 @@
 
 import base64
 import os
-import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from http import HTTPStatus
@@ -18,7 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import load_settings
 from app.data import tickets
 from app.data.pool import open_pool
-from app.logging import log, request_id, setup_logging
+from app.logging import log, setup_logging
 from app.models import Category, Priority, Status, Ticket
 
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
@@ -103,16 +102,6 @@ async def validation_error(
         field = ".".join(str(part) for part in error["loc"])
         problems.append(f"{field}: {error['msg']}")
     return error_response(422, "; ".join(problems))
-
-
-@app.middleware("http")
-async def add_request_id(request: Request, call_next) -> Response:
-    """Give each request an id, added to its log lines and to the X-Request-ID response header."""
-    rid = uuid.uuid4().hex
-    request_id.set(rid)
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = rid
-    return response
 
 
 @app.post(

@@ -6,11 +6,7 @@ Write logs with `log("ticket.classified", ticket_id=...)`. Never log ticket bodi
 import json
 import logging
 import sys
-from contextvars import ContextVar
 from datetime import UTC, datetime
-
-# Set by the API for each request, and added to every log line written while handling it.
-request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 _logger = logging.getLogger("app")
 
@@ -23,8 +19,6 @@ class JsonFormatter(logging.Formatter):
             "event": record.getMessage(),
         }
         entry.update(getattr(record, "fields", {}))
-        if request_id.get() is not None:
-            entry["request_id"] = request_id.get()
         if record.exc_info:
             entry["exception"] = self.formatException(record.exc_info)
         return json.dumps(entry, default=str)
