@@ -4,7 +4,7 @@
     "subject": "Charged twice this month",
     "body": "Hi, I see two charges of 49.00 on my card statement dated the 3rd and the 4th. I only have one subscription. Can you refund one of them?",
     "category": "billing",
-    "priority": "medium"
+    "priority": "high"
   },
   {
     "id": "e-02",
@@ -66,7 +66,7 @@
     "id": "e-10",
     "subject": "Whole team locked out",
     "body": "Since your update an hour ago nobody in our company can sign in with SSO. All 40 of us are blocked and we cannot serve our customers.",
-    "category": "account",
+    "category": "technical",
     "priority": "high"
   },
   {
@@ -95,7 +95,7 @@
     "subject": "Delete my account",
     "body": "Please close my account and delete all my personal data.",
     "category": "account",
-    "priority": "medium"
+    "priority": "low"
   },
   {
     "id": "e-15",
