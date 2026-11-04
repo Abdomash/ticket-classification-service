@@ -11,7 +11,7 @@ from tests.conftest import run_sql
 LEASE = 60
 
 
-async def test_claims_skip_locked_rows_and_never_overlap(pool):
+async def test_claims_never_overlap_and_an_expired_lease_passes_the_ticket_on(pool):
     for id in ("a", "b", "c"):
         await tickets.insert(pool, id, "", "x")
 
@@ -26,20 +26,19 @@ async def test_claims_skip_locked_rows_and_never_overlap(pool):
         tickets.claim_one(pool, LEASE), tickets.claim_one(pool, LEASE)
     )
     assert {first.id, second.id} == {"a", "c"}
-    assert await tickets.claim_one(pool, LEASE) is None
+    assert await tickets.claim_one(pool, LEASE) is None  # every lease is still valid
 
-
-async def test_expired_lease_is_reclaimed_and_the_old_worker_cannot_write(pool):
-    await tickets.insert(pool, "a", "", "x")
-    old = await tickets.claim_one(pool, LEASE)
-    assert old.status == Status.PROCESSING
-    assert await tickets.claim_one(pool, LEASE) is None  # the lease is still valid
-
-    await run_sql(pool, "UPDATE tickets SET locked_until = now() - interval '1 second'")
+    # The lease on "a" expires, so another worker claims it with a new token.
+    old = first if first.id == "a" else second
+    await run_sql(
+        pool,
+        "UPDATE tickets SET locked_until = now() - interval '1 second' WHERE id = 'a'",
+    )
     new = await tickets.claim_one(pool, LEASE)
     assert new.id == "a"
     assert new.attempts == old.attempts + 1
 
+    # The old worker can no longer write. The new one can.
     result = Classification(
         category="billing", priority="low", summary="Asks about an invoice."
     )
