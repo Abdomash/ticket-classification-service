@@ -34,7 +34,8 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     restart: unless-stopped
-    stop_grace_period: ${LLM_TIMEOUT_SECONDS:-30}s  # Must be at least LLM_TIMEOUT_SECONDS to let workers finish their model calls
+    # LLM_TIMEOUT_SECONDS + 10 seconds ("30s10s" is 40s)
+    stop_grace_period: ${LLM_TIMEOUT_SECONDS:-30}s10s
     depends_on:
       db: { condition: service_healthy }
 

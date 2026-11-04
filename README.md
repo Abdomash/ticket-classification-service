@@ -185,7 +185,7 @@ Before the next attempt, a ticket waits 30 seconds, or longer if the provider's 
 
 ### Graceful shutdown
 
-On SIGTERM, each worker finishes its current ticket and exits. A model call is cut off after `LLM_TIMEOUT_SECONDS`, and Compose reads its stop grace period from the same variable, so a stopping worker always has time to finish. If a worker is killed anyway, its lease expires and another worker can pick the ticket up.
+On SIGTERM, each worker finishes its current ticket and exits. A model call is cut off after `LLM_TIMEOUT_SECONDS`, and Docker Compose gives the stopping worker another 10 seconds to finish and save the result. If a worker is killed anyway, its lease expires and another worker can pick the ticket up.
 
 ## Scalability
 
