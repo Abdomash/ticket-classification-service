@@ -34,7 +34,7 @@ async def test_failures_are_retried_then_marked_failed_and_never_stored(
     for attempt in range(1, settings.max_attempts + 1):
         await run_sql(
             pool, "UPDATE tickets SET run_after = now()"
-        )  # skip the backoff wait
+        )  # skip the retry wait
         await drain(pool, classifier, settings)
 
         stored = await tickets.get(pool, "a")

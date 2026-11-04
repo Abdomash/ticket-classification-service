@@ -8,7 +8,6 @@ claims it again.
 
 import asyncio
 import logging
-import random
 import signal
 from functools import partial
 
@@ -22,9 +21,8 @@ from app.llm.base import Classifier, LLMError
 from app.logging import log, setup_logging
 from app.models import Ticket
 
-BACKOFF_BASE_SECONDS = 5
-BACKOFF_MAX_SECONDS = 300
-BACKOFF_JITTER = 0.2  # each delay is scaled by a random factor between 0.8 and 1.2
+# How long a failed ticket waits before its next attempt, unless the provider's Retry-After is longer.
+RETRY_DELAY_SECONDS = 30
 
 
 async def main() -> None:
@@ -119,7 +117,7 @@ async def process(
     except LLMError as error:
         reason = str(error)
         if ticket.attempts < settings.max_attempts:
-            delay = backoff(ticket.attempts, error.retry_after)
+            delay = max(RETRY_DELAY_SECONDS, error.retry_after or 0)
             await tickets.schedule_retry(
                 pool, ticket.id, ticket.attempts, reason, delay
             )
@@ -140,19 +138,6 @@ async def process(
         result.prompt_version,
     )
     ticket_log("ticket.classified")
-
-
-def backoff(attempts: int, retry_after: float | None = None) -> float:
-    """Return the seconds to wait before the next attempt.
-
-    The delay doubles with each attempt, is randomly scaled by BACKOFF_JITTER, is at least
-    `retry_after`, and never exceeds BACKOFF_MAX_SECONDS.
-    """
-    delay = BACKOFF_BASE_SECONDS * 2**attempts
-    delay *= random.uniform(1 - BACKOFF_JITTER, 1 + BACKOFF_JITTER)
-    if retry_after is not None:
-        delay = max(delay, retry_after)
-    return min(delay, BACKOFF_MAX_SECONDS)
 
 
 if __name__ == "__main__":

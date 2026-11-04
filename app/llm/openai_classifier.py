@@ -78,14 +78,21 @@ def _retry_after(error: openai.APIError) -> float | None:
 
 class OpenAIClassifier:
     def __init__(
-        self, base_url: str, api_key: str, model: str, timeout: float, http_client=None
+        self,
+        base_url: str,
+        api_key: str,
+        model: str,
+        timeout: float,
+        max_retries: int = 3,
+        http_client=None,
     ):
-        # max_retries=0 because the worker does the retries. Tests pass a mock `http_client`.
+        """`max_retries` is how often the SDK retries a rate limit, a server error or a dropped
+        connection, within the same timeout. Tests pass a mock `http_client`."""
         self._client = AsyncOpenAI(
             base_url=base_url,
             api_key=api_key,
             timeout=timeout,
-            max_retries=0,
+            max_retries=max_retries,
             http_client=http_client,
         )
         self._model = model
@@ -99,6 +106,7 @@ class OpenAIClassifier:
 
     async def classify(self, subject: str, body: str) -> ClassifyResult:
         # The SDK's timeout applies to each network step, so a slow reply can take longer in total.
+        # This timeout caps the whole call, including the SDK's retries.
         try:
             async with asyncio.timeout(self._timeout):
                 response = await self._client.chat.completions.create(

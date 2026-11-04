@@ -179,11 +179,9 @@ A worker that crashes or is killed cannot do that, so its ticket stays `processi
 
 **What if a worker takes too long and another worker claims its ticket?** Each claim adds 1 to `attempts`. A worker can only store its result if `attempts` still matches the value from its own claim. So only the worker with the latest claim gets to store the result, even if the first worker finishes earlier.
 
-Retries:
+**Retries:** the queue gives each ticket `MAX_ATTEMPTS` (3) attempts. Once a worker claims a ticket, it can retry its model call up to 3 times (the OpenAI SDK's `max_retries`), all within the `LLM_TIMEOUT_SECONDS` duration. If the worker still fails to process the ticket, because it crashed or its model calls kept failing, the ticket goes back to the queue with one attempt used, ready for another worker to claim. Once all 3 attempts are used, the ticket is `failed` and is no longer processed.
 
-- Every failure is retried: timeouts, rate limits, provider errors and invalid replies.
-- The wait is 5 × 2^attempts seconds, randomly scaled by ±20%, at least the provider's `Retry-After`, and at most 300 seconds.
-- After `MAX_ATTEMPTS` (3), the ticket is `failed`. If the lease expired on the last attempt, it is marked `failed` without calling the model again.
+Before the next attempt, a ticket waits 30 seconds, or longer if the provider's `Retry-After` asks for it.
 
 ### Graceful shutdown
 
