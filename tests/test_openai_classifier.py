@@ -38,7 +38,7 @@ def classifier(handler, timeout: float = 5, max_retries: int = 0) -> OpenAIClass
     )
 
 
-async def test_rate_limit_is_retried_request_is_strict_and_labels_are_normalised():
+async def test_rate_limit_is_retried_request_is_strict_and_answer_is_normalised():
     sent = {}
     calls = 0
 
@@ -48,9 +48,7 @@ async def test_rate_limit_is_retried_request_is_strict_and_labels_are_normalised
         if calls == 1:
             return httpx2.Response(429, headers={"retry-after-ms": "10"})
         sent.update(json.loads(request.content))
-        content = (
-            '{"category": " Billing ", "priority": "HIGH", "summary": "Charged twice."}'
-        )
+        content = '{"category": " Billing ", "priority": "HIGH", "summary": "Charged\\ntwice."}'
         return httpx2.Response(200, json=completion(content))
 
     result = await classifier(handler, max_retries=2).classify(
@@ -60,6 +58,7 @@ async def test_rate_limit_is_retried_request_is_strict_and_labels_are_normalised
     assert calls == 2
     assert result.classification.category == "billing"
     assert result.classification.priority == "high"
+    assert result.classification.summary == "Charged twice."
     assert result.model == "test-model"
     assert sent["temperature"] == 0
     assert sent["response_format"]["json_schema"]["strict"] is True

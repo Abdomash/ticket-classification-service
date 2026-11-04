@@ -46,6 +46,14 @@ class Classification(BaseModel):
             return value.strip().lower()
         return value
 
+    @field_validator("summary", mode="before")
+    @classmethod
+    def _single_line(cls, value: object) -> object:
+        """Replace line breaks with spaces, so the summary stays on one line."""
+        if isinstance(value, str):
+            return " ".join(value.splitlines())
+        return value
+
 
 class Ticket(BaseModel):
     """A row of the tickets table."""
