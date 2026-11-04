@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticket Classification Service</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.4"></script>
+  <style type="text/tailwindcss">
+    :root { --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2371717a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); }
+    @theme {
+      --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "Geist Mono", ui-monospace, monospace;
+    }
+    @layer components {
+      .field { @apply w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100 aria-invalid:border-red-400 aria-invalid:ring-red-50; }
+      .button { @apply h-9 rounded-lg px-4 text-sm font-medium disabled:opacity-40; }
+      .label { @apply text-xs font-medium tracking-wide text-zinc-500 uppercase; }
+
+      /* Filter menus: the arrow is a background image, so it looks the same in every browser.
+         Where supported, the open menu is styled too; elsewhere it is the native list. */
+      .menu {
+        @apply w-auto cursor-pointer appearance-none pr-9;
+        background: white var(--chevron) no-repeat right 12px center / 14px;
+      }
+      @supports (appearance: base-select) {
+        .menu, .menu::picker(select) { appearance: base-select; }
+        .menu::picker-icon { display: none; }
+        .menu::picker(select) { @apply mt-1 rounded-lg border border-zinc-200 bg-white p-1 shadow-lg; }
+        .menu option { @apply rounded-md px-2.5 py-1.5 text-sm hover:bg-zinc-100 checked:bg-zinc-100 checked:font-medium; }
+        .menu option::checkmark { display: none; }
+      }
+    }
+  </style>
+</head>
+<body class="bg-white font-sans text-zinc-950 antialiased">
+
+<header class="border-b border-zinc-200">
+  <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+    <span class="font-semibold tracking-tight">Ticket Classification</span>
+    <a href="/docs" class="text-sm text-zinc-500 hover:text-zinc-950">API docs</a>
+  </div>
+</header>
+
+<main class="mx-auto max-w-6xl px-6 py-12">
+  <h1 class="text-4xl font-bold tracking-tight">Support tickets</h1>
+  <p class="mt-2 text-lg text-zinc-500">Submit a ticket. A worker classifies it in the background and this page updates on its own.</p>
+
+  <div class="mt-10 grid items-start gap-8 lg:grid-cols-[320px_1fr]">
+    <form id="new-ticket" class="space-y-4 rounded-xl border border-zinc-200 p-6" novalidate>
+      <h2 class="font-semibold tracking-tight">New ticket</h2>
+      <div>
+        <input name="id" class="field font-mono" placeholder="t-2001">
+        <p data-error="id" class="mt-1.5 text-xs text-red-600"></p>
+      </div>
+      <div>
+        <input name="subject" class="field" placeholder="Subject">
+        <p data-error="subject" class="mt-1.5 text-xs text-red-600"></p>
+      </div>
+      <div>
+        <textarea name="body" class="field h-32 resize-none" placeholder="What does the customer need?"></textarea>
+        <p data-error="body" class="mt-1.5 text-xs text-red-600"></p>
+      </div>
+      <button class="button w-full bg-zinc-950 text-white hover:bg-zinc-800">Submit ticket</button>
+      <p id="message" class="text-sm"></p>
+    </form>
+
+    <div class="min-w-0 space-y-8">
+      <section class="overflow-hidden rounded-xl border border-zinc-200">
+        <div class="flex flex-wrap items-center gap-2 border-b border-zinc-200 p-4">
+          <h2 class="mr-auto font-semibold tracking-tight">Tickets</h2>
+          <select id="status" class="field menu">
+            <option value="">All statuses</option>
+            <option>pending</option><option>processing</option><option>classified</option><option>failed</option>
+          </select>
+          <select id="category" class="field menu">
+            <option value="">All categories</option>
+            <option>billing</option><option>technical</option><option>account</option><option>other</option>
+          </select>
+          <select id="priority" class="field menu">
+            <option value="">All priorities</option>
+            <option>high</option><option>medium</option><option>low</option>
+          </select>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-2xl table-fixed text-left text-sm">
+            <colgroup><col class="w-32"><col class="w-32"><col class="w-28"><col class="w-24"><col></colgroup>
+            <thead class="border-b border-zinc-200 text-zinc-500">
+              <tr class="h-11"><th class="px-4 font-medium">ID</th><th class="px-4 font-medium">Status</th><th class="px-4 font-medium">Category</th><th class="px-4 font-medium">Priority</th><th class="px-4 font-medium">Summary</th></tr>
+            </thead>
+            <tbody id="tickets" class="divide-y divide-zinc-100"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between border-t border-zinc-200 p-4">
+          <span id="page" class="text-sm text-zinc-500"></span>
+          <div class="flex gap-2">
+            <button id="previous" class="button border border-zinc-200 hover:bg-zinc-50">Previous</button>
+            <button id="next" class="button border border-zinc-200 hover:bg-zinc-50">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="detail" class="rounded-xl border border-zinc-200 p-6" hidden>
+        <div class="flex items-center gap-3">
+          <span id="detail-id" class="font-mono text-sm text-zinc-500"></span>
+          <span id="detail-status"></span>
+          <button id="detail-close" class="ml-auto text-zinc-400 hover:text-zinc-950" aria-label="Close">✕</button>
+        </div>
+        <h2 id="detail-subject" class="mt-3 text-2xl font-semibold tracking-tight"></h2>
+        <p id="detail-summary" class="mt-2 text-lg text-zinc-600"></p>
+        <dl id="detail-facts" class="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-zinc-100 py-5 sm:grid-cols-3"></dl>
+        <p id="detail-error" class="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"></p>
+        <p class="label mt-6">Message</p>
+        <p id="detail-body" class="mt-2 leading-relaxed whitespace-pre-wrap text-zinc-700"></p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+// Ticket text comes from the public, so it is only ever set with textContent, never innerHTML.
+
+const PAGE_SIZE = 10;
+const FILTERS = ["status", "category", "priority"];
+const STATUS_DOT = { pending: "bg-amber-400", processing: "bg-sky-500 animate-pulse", classified: "bg-emerald-500", failed: "bg-red-500" };
+const PRIORITY_TEXT = { high: "text-red-600 font-medium", medium: "text-amber-600", low: "text-zinc-500" };
+const FIELD_ERRORS = {
+  id: "Use 1 to 64 letters, digits, dashes or underscores.",
+  subject: "Keep the subject under 300 characters.",
+  body: "Describe the problem (up to 20,000 characters).",
+};
+
+let cursors = [null]; // cursors[n] loads page n; page 0 needs no cursor
+let page = 0;
+let nextCursor = null;
+let pollTimer = null;
+let selectedId = null;
+let latestRefresh = 0;
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  node.className = className;
+  if (text !== undefined) node.textContent = text ?? "-";
+  return node;
+}
+
+function statusBadge(status) {
+  const badge = element("span", "inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700");
+  badge.append(element("span", "size-1.5 rounded-full " + STATUS_DOT[status]), status);
+  return badge;
+}
+
+function cell(text, className = "") {
+  const td = element("td", "truncate px-4 " + className, text);
+  td.title = text ?? "";
+  return td;
+}
+
+function ticketRow(ticket) {
+  const status = element("td", "px-4");
+  status.append(statusBadge(ticket.status));
+
+  const tr = element("tr", "h-12 cursor-pointer hover:bg-zinc-50");
+  if (ticket.id === selectedId) tr.classList.add("bg-zinc-100");
+  tr.append(
+    cell(ticket.id, "font-mono text-xs"),
+    status,
+    cell(ticket.category),
+    cell(ticket.priority, PRIORITY_TEXT[ticket.priority]),
+    cell(ticket.summary ?? ticket.last_error, "text-zinc-600"),
+  );
+  tr.addEventListener("click", () => select(ticket.id));
+  return tr;
+}
+
+function emptyRow(text) {
+  const td = element("td", "px-4 text-zinc-400", text);
+  td.colSpan = 5;
+  const tr = element("tr", "h-12");
+  tr.append(td);
+  return tr;
+}
+
+async function fetchPage() {
+  const params = new URLSearchParams({ limit: PAGE_SIZE });
+  for (const name of FILTERS) {
+    const value = document.getElementById(name).value;
+    if (value) params.set(name, value);
+  }
+  if (cursors[page]) params.set("cursor", cursors[page]);
+  return (await fetch("/tickets?" + params)).json();
+}
+
+function showPage(data) {
+  const rows = data.items.map(ticketRow);
+  if (rows.length === 0) rows.push(emptyRow("No tickets match these filters."));
+  // Pad the page with empty rows so the table keeps the same height.
+  while (rows.length < PAGE_SIZE) rows.push(emptyRow(""));
+  document.getElementById("tickets").replaceChildren(...rows);
+
+  nextCursor = data.next_cursor;
+  document.getElementById("previous").disabled = page === 0;
+  document.getElementById("next").disabled = !nextCursor;
+  document.getElementById("page").textContent = "Page " + (page + 1);
+}
+
+function isBusy(ticket) {
+  return ticket.status === "pending" || ticket.status === "processing";
+}
+
+// Reload the current page and the selected ticket. Keep reloading while any of them is still being worked on.
+async function refresh() {
+  clearTimeout(pollTimer);
+  const thisRefresh = ++latestRefresh;
+
+  const data = await fetchPage();
+  let ticket = null;
+  if (selectedId) ticket = await (await fetch("/tickets/" + encodeURIComponent(selectedId))).json();
+
+  // A click started a newer refresh while this one was waiting: drop this result.
+  if (thisRefresh !== latestRefresh) return;
+
+  showPage(data);
+  if (ticket) showDetail(ticket);
+  const busy = data.items.some(isBusy) || (ticket && isBusy(ticket));
+  if (busy) pollTimer = setTimeout(refresh, 3000);
+}
+
+function goToPage(n) {
+  page = n;
+  refresh();
+}
+
+function firstPage() {
+  cursors = [null];
+  goToPage(0);
+}
+
+function nextPage() {
+  cursors[page + 1] = nextCursor;
+  goToPage(page + 1);
+}
+
+function select(id) {
+  selectedId = id;
+  refresh();
+}
+
+function fact(label, value, className = "") {
+  const div = element("div", "");
+  div.append(element("dt", "label", label), element("dd", "mt-1 text-sm " + className, value));
+  return div;
+}
+
+function showDetail(ticket) {
+  document.getElementById("detail-id").textContent = ticket.id;
+  document.getElementById("detail-status").replaceChildren(statusBadge(ticket.status));
+  document.getElementById("detail-subject").textContent = ticket.subject || "(no subject)";
+  document.getElementById("detail-summary").textContent = ticket.summary ?? "Not classified yet.";
+  document.getElementById("detail-facts").replaceChildren(
+    fact("Category", ticket.category),
+    fact("Priority", ticket.priority, PRIORITY_TEXT[ticket.priority]),
+    fact("Attempts", ticket.attempts),
+    fact("Model", ticket.model, "font-mono text-xs"),
+    fact("Prompt version", ticket.prompt_version, "font-mono text-xs"),
+    fact("Created", new Date(ticket.created_at).toLocaleString()),
+  );
+  const error = document.getElementById("detail-error");
+  error.textContent = ticket.last_error;
+  error.hidden = !ticket.last_error || ticket.status === "classified";
+  document.getElementById("detail-body").textContent = ticket.body;
+  document.getElementById("detail").hidden = false;
+}
+
+function closeDetail() {
+  selectedId = null;
+  document.getElementById("detail").hidden = true;
+  refresh();
+}
+
+function setFieldError(form, name, text) {
+  form.elements[name].toggleAttribute("aria-invalid", Boolean(text));
+  form.querySelector(`[data-error="${name}"]`).textContent = text;
+}
+
+async function submitTicket(event) {
+  event.preventDefault();
+  const form = event.target;
+  const message = document.getElementById("message");
+  message.textContent = "";
+  for (const name in FIELD_ERRORS) setFieldError(form, name, "");
+
+  const response = await fetch("/tickets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.fromEntries(new FormData(form))),
+  });
+
+  if (response.status === 409) {
+    setFieldError(form, "id", "This id is already used by a different ticket.");
+    return;
+  }
+  if (response.status === 422) {
+    // The API names each invalid field, for example "body.id: String should match pattern ...".
+    const error = (await response.json()).error.message;
+    for (const name in FIELD_ERRORS) {
+      if (error.includes("body." + name + ":")) setFieldError(form, name, FIELD_ERRORS[name]);
+    }
+    return;
+  }
+  if (!response.ok) {
+    message.className = "text-sm text-red-600";
+    message.textContent = "Something went wrong (HTTP " + response.status + "). Try again.";
+    return;
+  }
+
+  const data = await response.json();
+  message.className = "text-sm text-emerald-700";
+  message.textContent = response.status === 202 ? "Submitted. It will be classified shortly." : "This ticket was already submitted.";
+  if (response.status === 202) form.reset();
+  selectedId = data.id;
+  firstPage();
+}
+
+document.getElementById("new-ticket").addEventListener("submit", submitTicket);
+document.getElementById("previous").addEventListener("click", () => goToPage(page - 1));
+document.getElementById("next").addEventListener("click", nextPage);
+document.getElementById("detail-close").addEventListener("click", closeDetail);
+for (const name of FILTERS) document.getElementById(name).addEventListener("change", firstPage);
+firstPage();
+</script>
+</body>
+</html>

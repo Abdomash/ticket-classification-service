@@ -15,6 +15,10 @@ async def post_samples_and_classify(client, pool, settings):
 
 
 async def test_samples_are_classified_once_and_resubmissions_change_nothing(client, pool, settings):
+    web_client = await client.get("/")
+    assert web_client.status_code == 200
+    assert web_client.headers["content-type"].startswith("text/html")
+
     await post_samples_and_classify(client, pool, settings)
 
     for sample in SAMPLES:

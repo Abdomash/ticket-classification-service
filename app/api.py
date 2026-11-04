@@ -6,11 +6,12 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from http import HTTPStatus
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -19,6 +20,8 @@ from app.data import tickets
 from app.data.pool import open_pool
 from app.logging import log, request_id, setup_logging
 from app.models import Category, Priority, Status, Ticket
+
+INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
 # Configure logging on import, before uvicorn writes its startup lines.
 setup_logging(os.environ.get("LOG_LEVEL", "INFO"))
@@ -165,6 +168,12 @@ async def list_tickets(
     if len(rows) > limit:
         next_cursor = encode_cursor(rows[limit - 1])
     return Page(items=items, next_cursor=next_cursor)
+
+
+@app.get("/", include_in_schema=False)
+async def index() -> FileResponse:
+    """Serve the single-page web client."""
+    return FileResponse(INDEX_HTML)
 
 
 @app.get("/healthz")
