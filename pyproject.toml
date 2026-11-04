@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi==0.162.0",
-    "httpx==0.28.1",
+    "httpx2==2.16.0",
     "openai==3.42.1",
     "psycopg[binary,pool]==3.3.7",
     "pydantic-settings==2.16.2",

@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-import httpx
+import httpx2
 import psycopg
 import pytest
 from psycopg.conninfo import make_conninfo
@@ -52,8 +52,10 @@ async def pool():
 @pytest.fixture
 async def client(pool):
     app.state.pool = pool
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    transport = httpx2.ASGITransport(app=app)
+    async with httpx2.AsyncClient(
+        transport=transport, base_url="http://test"
+    ) as client:
         yield client
 
 

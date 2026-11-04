@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-import httpx
+import httpx2
 
 SAMPLES = Path(__file__).parent.parent / "samples" / "tickets.json"
 WAIT_SECONDS = 120
@@ -17,7 +17,7 @@ WAIT_SECONDS = 120
 async def main(base_url: str) -> None:
     samples = json.loads(SAMPLES.read_text())
 
-    async with httpx.AsyncClient(base_url=base_url, timeout=10) as client:
+    async with httpx2.AsyncClient(base_url=base_url, timeout=10) as client:
         for sample in samples:
             response = await client.post("/tickets", json=sample)
             print(f"POST {sample['id']}: {response.status_code}")
