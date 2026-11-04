@@ -1,0 +1,41 @@
+name: Evaluate model
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "fake needs no API key. openai_compat needs an LLM_API_KEY repository secret."
+        type: choice
+        options: [fake, openai_compat]
+        default: fake
+      model:
+        description: Model name (openai_compat only)
+        default: openai/gpt-6-luna
+      base_url:
+        description: OpenAI-compatible API base URL (openai_compat only)
+        default: https://openrouter.ai/api/v1
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    env:
+      LLM_PROVIDER: ${{ inputs.provider }}
+      LLM_MODEL: ${{ inputs.model }}
+      LLM_BASE_URL: ${{ inputs.base_url }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --no-dev
+      - run: uv run python -m scripts.evaluate | tee report.txt
+      - name: Show the report on the run page
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat report.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-log
+          path: logs/evaluations/*.jsonl
