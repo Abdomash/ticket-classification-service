@@ -122,12 +122,14 @@ sequenceDiagram
 
     Client->>API: POST /tickets
     API->>DB: insert ticket (pending)
-    API-->>Client: 202
-    Worker->>DB: claim a due ticket (processing)
+    API-->>Client: 202 Accepted (ticket pending)
+    Worker->>DB: poll and claim a ready ticket (processing)
     Worker->>LLM: classify subject and body
     LLM-->>Worker: JSON text
     Worker->>DB: save result (classified), or retry later (pending), or give up (failed)
     Client->>API: GET /tickets/{id}
+    API->>DB: read ticket
+    DB-->>API: ticket
     API-->>Client: ticket with its status
 ```
 
