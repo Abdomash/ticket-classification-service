@@ -1,4 +1,4 @@
-name: ticket-classification-service
+name: tc-service
 
 services:
   db:
@@ -15,6 +15,7 @@ services:
 
   api:
     build: .
+    image: tc-service
     command: ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000"]
     env_file: .env
     environment:
@@ -29,6 +30,7 @@ services:
 
   worker:
     build: .
+    image: tc-service
     command: ["python", "-m", "app.worker"]
     env_file: .env
     environment:
