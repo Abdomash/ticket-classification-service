@@ -43,7 +43,13 @@ async def main() -> None:
     log("worker_process.stopped")
 
 
-async def worker(n: int, pool: AsyncConnectionPool, classifier: Classifier, settings: Settings, stop: asyncio.Event):
+async def worker(
+    n: int,
+    pool: AsyncConnectionPool,
+    classifier: Classifier,
+    settings: Settings,
+    stop: asyncio.Event,
+):
     """Claim and process one ticket at a time until `stop` is set."""
     log("worker.started", worker=n)
 
@@ -56,7 +62,13 @@ async def worker(n: int, pool: AsyncConnectionPool, classifier: Classifier, sett
         try:
             await process(n, ticket, pool, classifier, settings)
         except tickets.LeaseLost:
-            log("ticket.lease_lost", logging.WARNING, ticket_id=ticket.id, attempt=ticket.attempts, worker=n)
+            log(
+                "ticket.lease_lost",
+                logging.WARNING,
+                ticket_id=ticket.id,
+                attempt=ticket.attempts,
+                worker=n,
+            )
 
     log("worker.stopped", worker=n)
 
@@ -78,7 +90,13 @@ async def sleep_unless_stopped(seconds: float, stop: asyncio.Event) -> None:
         pass
 
 
-async def process(n: int, ticket: Ticket, pool: AsyncConnectionPool, classifier: Classifier, settings: Settings):
+async def process(
+    n: int,
+    ticket: Ticket,
+    pool: AsyncConnectionPool,
+    classifier: Classifier,
+    settings: Settings,
+):
     """Classify one claimed ticket, then store the result, schedule a retry, or mark it failed.
 
     Raises `tickets.LeaseLost` if another worker took the ticket in the meantime.
@@ -88,8 +106,12 @@ async def process(n: int, ticket: Ticket, pool: AsyncConnectionPool, classifier:
 
     # The lease ran out on the last attempt, for example because the worker was killed each time.
     if ticket.attempts > settings.max_attempts:
-        await tickets.fail(pool, ticket.id, ticket.attempts, "lease expired on the last attempt")
-        ticket_log("ticket.failed", logging.ERROR, error="lease expired on the last attempt")
+        await tickets.fail(
+            pool, ticket.id, ticket.attempts, "lease expired on the last attempt"
+        )
+        ticket_log(
+            "ticket.failed", logging.ERROR, error="lease expired on the last attempt"
+        )
         return
 
     try:
@@ -98,15 +120,24 @@ async def process(n: int, ticket: Ticket, pool: AsyncConnectionPool, classifier:
         reason = str(error)
         if ticket.attempts < settings.max_attempts:
             delay = backoff(ticket.attempts, error.retry_after)
-            await tickets.schedule_retry(pool, ticket.id, ticket.attempts, reason, delay)
-            ticket_log("ticket.retry_scheduled", error=reason, delay_seconds=round(delay))
+            await tickets.schedule_retry(
+                pool, ticket.id, ticket.attempts, reason, delay
+            )
+            ticket_log(
+                "ticket.retry_scheduled", error=reason, delay_seconds=round(delay)
+            )
         else:
             await tickets.fail(pool, ticket.id, ticket.attempts, reason)
             ticket_log("ticket.failed", logging.ERROR, error=reason)
         return
 
     await tickets.complete(
-        pool, ticket.id, ticket.attempts, result.classification, result.model, result.prompt_version
+        pool,
+        ticket.id,
+        ticket.attempts,
+        result.classification,
+        result.model,
+        result.prompt_version,
     )
     ticket_log("ticket.classified")
 

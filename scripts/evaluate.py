@@ -94,7 +94,9 @@ def save_log(model: str, records: list[dict]) -> Path:
 # Report
 
 
-def print_report(model: str, records: list[dict], seconds: float, log_path: Path) -> None:
+def print_report(
+    model: str, records: list[dict], seconds: float, log_path: Path
+) -> None:
     total = len(records)
     category_correct = sum(r["category"] == r["expected_category"] for r in records)
     priority_correct = sum(r["priority"] == r["expected_priority"] for r in records)

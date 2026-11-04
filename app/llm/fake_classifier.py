@@ -11,19 +11,63 @@ from typing import Self
 
 from app.llm.base import ClassifyResult, LLMError, parse_classification
 
-FAILURE_MODES = ("malformed_json", "bad_category", "missing_field", "timeout", "rate_limit")
+FAILURE_MODES = (
+    "malformed_json",
+    "bad_category",
+    "missing_field",
+    "timeout",
+    "rate_limit",
+)
 
 _CATEGORY_KEYWORDS = {
-    "billing": ("invoice", "charge", "refund", "overcharged", "subscription", "payment"),
-    "technical": ("error", "api", "http", "export", "upload", "timeout", "broken", "zip"),
-    "account": ("log in", "login", "password", "credentials", "email address", "account"),
+    "billing": (
+        "invoice",
+        "charge",
+        "refund",
+        "overcharged",
+        "subscription",
+        "payment",
+    ),
+    "technical": (
+        "error",
+        "api",
+        "http",
+        "export",
+        "upload",
+        "timeout",
+        "broken",
+        "zip",
+    ),
+    "account": (
+        "log in",
+        "login",
+        "password",
+        "credentials",
+        "email address",
+        "account",
+    ),
 }
 _HIGH_PRIORITY_WORDS = ("production", "blocking", "outage")
-_MEDIUM_PRIORITY_WORDS = ("refund", "charge", "cannot", "can't", "error", "broken", "empty", "before the")
+_MEDIUM_PRIORITY_WORDS = (
+    "refund",
+    "charge",
+    "cannot",
+    "can't",
+    "error",
+    "broken",
+    "empty",
+    "before the",
+)
 
 
 class FakeClassifier:
-    def __init__(self, failure_rate: float, seed: int, force: str | None = None, delay: float = 0.2):
+    def __init__(
+        self,
+        failure_rate: float,
+        seed: int,
+        force: str | None = None,
+        delay: float = 0.2,
+    ):
         """`force` makes every call fail with that mode. `delay` is the maximum simulated latency."""
         self._rng = random.Random(seed)
         self._failure_rate = failure_rate

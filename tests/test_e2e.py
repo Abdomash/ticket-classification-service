@@ -14,7 +14,9 @@ async def post_samples_and_classify(client, pool, settings):
     await drain(pool, FakeClassifier(failure_rate=0, seed=1, delay=0), settings)
 
 
-async def test_samples_are_classified_once_and_resubmissions_change_nothing(client, pool, settings):
+async def test_samples_are_classified_once_and_resubmissions_change_nothing(
+    client, pool, settings
+):
     web_client = await client.get("/")
     assert web_client.status_code == 200
     assert web_client.headers["content-type"].startswith("text/html")
@@ -39,14 +41,18 @@ async def test_samples_are_classified_once_and_resubmissions_change_nothing(clie
     assert await tickets.claim_one(pool, settings.lease_seconds) is None
 
     # The same id with different content is rejected and the original is kept.
-    conflict = await client.post("/tickets", json={**SAMPLES[0], "body": "something else"})
+    conflict = await client.post(
+        "/tickets", json={**SAMPLES[0], "body": "something else"}
+    )
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "conflict"
     stored = (await client.get(f"/tickets/{SAMPLES[0]['id']}")).json()
     assert stored["body"] == SAMPLES[0]["body"]
 
 
-async def test_pagination_returns_each_ticket_once_and_applies_filters(client, pool, settings):
+async def test_pagination_returns_each_ticket_once_and_applies_filters(
+    client, pool, settings
+):
     await post_samples_and_classify(client, pool, settings)
 
     async def collect(query: str) -> list[str]:

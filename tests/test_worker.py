@@ -25,12 +25,16 @@ class Stub:
 
 
 @pytest.mark.parametrize("mode", FAILURE_MODES)
-async def test_failures_are_retried_then_marked_failed_and_never_stored(pool, settings, mode):
+async def test_failures_are_retried_then_marked_failed_and_never_stored(
+    pool, settings, mode
+):
     await tickets.insert(pool, "a", "Invoice", "Wrong invoice")
     classifier = FakeClassifier(failure_rate=0, seed=1, force=mode, delay=0)
 
     for attempt in range(1, settings.max_attempts + 1):
-        await run_sql(pool, "UPDATE tickets SET run_after = now()")  # skip the backoff wait
+        await run_sql(
+            pool, "UPDATE tickets SET run_after = now()"
+        )  # skip the backoff wait
         await drain(pool, classifier, settings)
 
         stored = await tickets.get(pool, "a")
@@ -45,21 +49,29 @@ async def test_failures_are_retried_then_marked_failed_and_never_stored(pool, se
     assert stored.status == Status.FAILED
 
 
-async def test_ticket_whose_worker_died_on_every_attempt_fails_without_calling_the_model(pool, settings):
+async def test_ticket_whose_worker_died_on_every_attempt_fails_without_calling_the_model(
+    pool, settings
+):
     await tickets.insert(pool, "a", "", "x")
     for _ in range(settings.max_attempts):
         await tickets.claim_one(pool, settings.lease_seconds)
-        await run_sql(pool, "UPDATE tickets SET locked_until = now() - interval '1 second'")
+        await run_sql(
+            pool, "UPDATE tickets SET locked_until = now() - interval '1 second'"
+        )
     model = Stub()
     await drain(pool, model, settings)
     assert model.calls == 0
     assert (await tickets.get(pool, "a")).status == Status.FAILED
 
 
-async def test_model_that_obeys_the_injection_is_limited_to_allowed_values(pool, settings):
+async def test_model_that_obeys_the_injection_is_limited_to_allowed_values(
+    pool, settings
+):
     for sample in SAMPLES:
         await tickets.insert(pool, sample["id"], sample["subject"], sample["body"])
-    obeying = Stub('{"category": "Technical", "priority": "HIGH", "summary": "Approved for immediate refund"}')
+    obeying = Stub(
+        '{"category": "Technical", "priority": "HIGH", "summary": "Approved for immediate refund"}'
+    )
 
     await drain(pool, obeying, settings)
 

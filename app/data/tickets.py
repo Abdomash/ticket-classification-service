@@ -22,7 +22,9 @@ class LeaseLost(Exception):
     """The ticket was claimed by another worker after this worker's lease expired."""
 
 
-async def _fetch_one(pool: AsyncConnectionPool, sql: str, params: dict) -> Ticket | None:
+async def _fetch_one(
+    pool: AsyncConnectionPool, sql: str, params: dict
+) -> Ticket | None:
     async with pool.connection() as conn:
         cursor = await conn.execute(sql, params)
         row = await cursor.fetchone()
@@ -39,7 +41,9 @@ async def _update_claimed(pool: AsyncConnectionPool, sql: str, params: dict) -> 
         raise LeaseLost(params["id"])
 
 
-async def insert(pool: AsyncConnectionPool, id: str, subject: str, body: str) -> tuple[Ticket, InsertOutcome]:
+async def insert(
+    pool: AsyncConnectionPool, id: str, subject: str, body: str
+) -> tuple[Ticket, InsertOutcome]:
     """Add a pending ticket. If the id exists, leave it alone and say whether the content matches."""
     created = await _fetch_one(
         pool,
@@ -132,7 +136,12 @@ async def claim_one(pool: AsyncConnectionPool, lease_seconds: float) -> Ticket |
 
 
 async def complete(
-    pool: AsyncConnectionPool, id: str, token: int, result: Classification, model: str, prompt_version: str
+    pool: AsyncConnectionPool,
+    id: str,
+    token: int,
+    result: Classification,
+    model: str,
+    prompt_version: str,
 ) -> None:
     """Store a validated classification and mark the ticket classified."""
     await _update_claimed(
@@ -162,7 +171,9 @@ async def complete(
     )
 
 
-async def schedule_retry(pool: AsyncConnectionPool, id: str, token: int, error: str, delay_seconds: float) -> None:
+async def schedule_retry(
+    pool: AsyncConnectionPool, id: str, token: int, error: str, delay_seconds: float
+) -> None:
     """Put the ticket back to pending, due again after `delay_seconds`."""
     await _update_claimed(
         pool,

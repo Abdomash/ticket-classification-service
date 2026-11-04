@@ -48,7 +48,9 @@ class TicketOut(BaseModel):
     summary: str | None
     model: str | None
     prompt_version: str | None
-    last_error: str | None = Field(description="Short reason the last attempt failed, if it did")
+    last_error: str | None = Field(
+        description="Short reason the last attempt failed, if it did"
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -82,7 +84,9 @@ def error_response(status: int, message: str) -> JSONResponse:
     """Build the error body used by every endpoint: {"error": {"code": "not_found", "message": ...}}."""
     phrase = HTTPStatus(status).phrase
     code = phrase.lower().replace(" ", "_")
-    return JSONResponse({"error": {"code": code, "message": message}}, status_code=status)
+    return JSONResponse(
+        {"error": {"code": code, "message": message}}, status_code=status
+    )
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -91,7 +95,9 @@ async def http_error(request: Request, exc: StarletteHTTPException) -> JSONRespo
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_error(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     problems = []
     for error in exc.errors():
         field = ".".join(str(part) for part in error["loc"])
@@ -113,24 +119,36 @@ async def add_request_id(request: Request, call_next) -> Response:
     "/tickets",
     status_code=202,
     responses={
-        200: {"model": TicketOut, "description": "The same ticket was already submitted"},
+        200: {
+            "model": TicketOut,
+            "description": "The same ticket was already submitted",
+        },
         409: {"model": Error, "description": "The id exists with different content"},
         422: {"model": Error, "description": "Invalid ticket"},
     },
 )
-async def create_ticket(ticket: TicketIn, request: Request, response: Response) -> TicketOut:
+async def create_ticket(
+    ticket: TicketIn, request: Request, response: Response
+) -> TicketOut:
     """Return 202 for a new ticket, 200 if the same ticket was already sent, 409 if the id has other content."""
-    stored, outcome = await tickets.insert(request.app.state.pool, ticket.id, ticket.subject, ticket.body)
+    stored, outcome = await tickets.insert(
+        request.app.state.pool, ticket.id, ticket.subject, ticket.body
+    )
     log(f"ticket.{outcome}", ticket_id=ticket.id)
 
     if outcome == "conflict":
-        raise HTTPException(409, "a ticket with this id already exists with different content")
+        raise HTTPException(
+            409, "a ticket with this id already exists with different content"
+        )
     if outcome == "duplicate":
         response.status_code = 200
     return TicketOut.model_validate(stored)
 
 
-@app.get("/tickets/{ticket_id}", responses={404: {"model": Error, "description": "Ticket not found"}})
+@app.get(
+    "/tickets/{ticket_id}",
+    responses={404: {"model": Error, "description": "Ticket not found"}},
+)
 async def get_ticket(ticket_id: str, request: Request) -> TicketOut:
     ticket = await tickets.get(request.app.state.pool, ticket_id)
     if ticket is None:
@@ -161,7 +179,9 @@ async def list_tickets(
             raise HTTPException(400, "invalid cursor")
 
     # Fetch one extra row to know whether there is a next page.
-    rows = await tickets.list_page(request.app.state.pool, status, category, priority, limit + 1, after)
+    rows = await tickets.list_page(
+        request.app.state.pool, status, category, priority, limit + 1, after
+    )
     items = [TicketOut.model_validate(row) for row in rows[:limit]]
 
     next_cursor = None

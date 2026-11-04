@@ -34,7 +34,9 @@ class Classification(BaseModel):
 
     category: Category
     priority: Priority
-    summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    summary: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)
+    ]
 
     @field_validator("category", "priority", mode="before")
     @classmethod

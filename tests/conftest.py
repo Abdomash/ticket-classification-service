@@ -18,7 +18,9 @@ from app.data import tickets
 from app.data.pool import open_pool
 from app.worker import process
 
-SERVER_URL = os.environ.get("TEST_DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres")
+SERVER_URL = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres"
+)
 TEST_DB_URL = make_conninfo(SERVER_URL, dbname="tickets_test")
 
 ROOT = Path(__file__).parent.parent
@@ -27,8 +29,12 @@ SAMPLES = json.loads((ROOT / "samples" / "tickets.json").read_text())
 
 
 async def create_test_database() -> None:
-    async with await psycopg.AsyncConnection.connect(SERVER_URL, autocommit=True) as conn:
-        cursor = await conn.execute("SELECT 1 FROM pg_database WHERE datname = 'tickets_test'")
+    async with await psycopg.AsyncConnection.connect(
+        SERVER_URL, autocommit=True
+    ) as conn:
+        cursor = await conn.execute(
+            "SELECT 1 FROM pg_database WHERE datname = 'tickets_test'"
+        )
         if await cursor.fetchone() is None:
             await conn.execute("CREATE DATABASE tickets_test")
 
@@ -53,7 +59,9 @@ async def client(pool):
 
 @pytest.fixture
 def settings():
-    return Settings(_env_file=None, database_url=TEST_DB_URL, max_attempts=3, poll_seconds=0.01)
+    return Settings(
+        _env_file=None, database_url=TEST_DB_URL, max_attempts=3, poll_seconds=0.01
+    )
 
 
 async def run_sql(pool, sql: str) -> None:

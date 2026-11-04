@@ -22,7 +22,9 @@ async def test_claims_skip_locked_rows_and_never_overlap(pool):
         assert claimed.id == "b"
 
     # Two claims at the same time get different tickets.
-    first, second = await asyncio.gather(tickets.claim_one(pool, LEASE), tickets.claim_one(pool, LEASE))
+    first, second = await asyncio.gather(
+        tickets.claim_one(pool, LEASE), tickets.claim_one(pool, LEASE)
+    )
     assert {first.id, second.id} == {"a", "c"}
     assert await tickets.claim_one(pool, LEASE) is None
 
@@ -38,7 +40,9 @@ async def test_expired_lease_is_reclaimed_and_the_old_worker_cannot_write(pool):
     assert new.id == "a"
     assert new.attempts == old.attempts + 1
 
-    result = Classification(category="billing", priority="low", summary="Asks about an invoice.")
+    result = Classification(
+        category="billing", priority="low", summary="Asks about an invoice."
+    )
     with pytest.raises(tickets.LeaseLost):
         await tickets.complete(pool, "a", old.attempts, result, "model", "v1")
     with pytest.raises(tickets.LeaseLost):

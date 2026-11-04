@@ -38,7 +38,9 @@ async def main(base_url: str) -> None:
         detail = r["summary"]
         if r["status"] != "classified":
             detail = r["last_error"]
-        print(f"{r['id']}  {r['status']:<10} {r['category'] or '-':<9} {r['priority'] or '-':<6} {detail}")
+        print(
+            f"{r['id']}  {r['status']:<10} {r['category'] or '-':<9} {r['priority'] or '-':<6} {detail}"
+        )
 
 
 if __name__ == "__main__":
